@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-requests}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-requests}
+      POSTGRES_DB: ${DB_NAME:-requests}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-requests} -d ${DB_NAME:-requests}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-requests}
+      DB_PASSWORD: ${DB_PASSWORD:-requests}
+      DB_NAME: ${DB_NAME:-requests}
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo-em-producao}
+      JWT_EXPIRES_IN: 8h
+      PORT: 3001
+      CORS_ORIGIN: http://localhost:3000
+    ports:
+      - "3001:3001"
+    command: sh -c "npm run migration:run:prod && npm run seed:prod && node dist/main"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    environment:
+      # O Next chama a API pelo servidor (rede interna do compose), nunca pelo navegador.
+      API_URL: http://backend:3001
+      COOKIE_SECURE: "false"
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
