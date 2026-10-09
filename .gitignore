@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+.next
+coverage
+*.log
+_pacote-completo.zip
