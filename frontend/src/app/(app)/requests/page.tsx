@@ -12,6 +12,7 @@ import {
 } from '@/lib/requests-query';
 import type { Area, Paginated, RequestSummary } from '@/lib/types';
 import { IconBoard, IconList } from '@/components/Icons';
+import { RememberListUrl } from '@/components/ListUrl';
 import { PriorityBadge, StatusBadge } from '@/components/Badges';
 import { KanbanBoard, type KanbanColumn } from './KanbanBoard';
 
@@ -48,8 +49,11 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
     return `/requests?${q.toString()}`;
   };
 
+  const currentUrl = kanban ? viewHref(query, 'kanban') : `/requests${query.size ? `?${query.toString()}` : ''}`;
+
   return (
     <div className="stack">
+      <RememberListUrl url={currentUrl} />
       <div className="page-head">
         <div>
           <h1>Solicitações</h1>

@@ -104,5 +104,6 @@ export async function deleteRequestAction(requestId: string): Promise<ActionStat
   }
   revalidatePath('/requests');
   revalidatePath('/');
-  redirect('/requests');
+  // Quem chamou decide para onde voltar (a última listagem usada, com visão e filtros).
+  return {};
 }

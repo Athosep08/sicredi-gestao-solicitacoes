@@ -1,9 +1,12 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { deleteRequestAction } from '@/app/actions';
+import { loadListUrl } from '@/lib/list-url';
 
 export function DeleteButton({ requestId }: { requestId: string }) {
+  const router = useRouter();
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
 
@@ -12,7 +15,9 @@ export function DeleteButton({ requestId }: { requestId: string }) {
     setError(undefined);
     startTransition(async () => {
       const result = await deleteRequestAction(requestId);
-      if (result?.error) setError(result.error);
+      if (result?.error) return setError(result.error);
+      // Volta para a última listagem usada (lista ou kanban, com filtros).
+      router.replace(loadListUrl());
     });
   };
 

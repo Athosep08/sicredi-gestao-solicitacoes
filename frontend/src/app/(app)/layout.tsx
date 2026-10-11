@@ -4,7 +4,7 @@ import { ROLE_LABEL } from '@/lib/labels';
 import { IconLogout, IconMark } from '@/components/Icons';
 import { NavLinks } from '@/components/NavLinks';
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const user = await getCurrentUser();
   const initials = user.name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
   return (
@@ -29,6 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
       <main className="content">{children}</main>
+      {modal}
     </div>
   );
 }
