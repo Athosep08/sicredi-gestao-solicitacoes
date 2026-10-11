@@ -1,9 +1,9 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional } from 'class-validator';
 import { CommentVisibility } from '../../common/enums';
+import { RequiredText } from '../../common/text.decorators';
 
 export class CreateCommentDto {
-  @IsString()
-  @IsNotEmpty({ message: 'O comentário não pode ser vazio.' })
+  @RequiredText('O comentário', 5000)
   content: string;
 
   @IsOptional()

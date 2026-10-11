@@ -1,21 +1,17 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { Priority } from '../../common/enums';
+import { OptionalText } from '../../common/text.decorators';
 
 // Atualização de conteúdo (nunca de status, data de criação ou solicitante).
 export class UpdateRequestDto {
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(255)
+  @OptionalText('O título', 255)
   title?: string;
 
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
+  @OptionalText('A descrição', 10000)
   description?: string;
 
   @IsOptional()
-  @IsUUID('4')
+  @IsUUID('4', { message: 'Área inválida.' })
   areaId?: string;
 
   @IsOptional()

@@ -139,4 +139,54 @@ describe('Solicitações (e2e)', () => {
     const res = await http.get('/requests/nao-e-uuid').set(auth(agentToken)).expect(400);
     expect(res.body).toEqual(expect.objectContaining({ statusCode: 400, errorId: expect.any(String), path: expect.any(String) }));
   });
+
+  // ---- Regressões dos pontos encontrados na bateria de testes de ataque ----
+  describe('endurecimento (achados dos testes de ataque)', () => {
+    const body = { description: 'D', areaId: '', priority: 'low' };
+    const create = (over: object) => http.post('/requests').set(auth(requesterToken)).send({ ...body, areaId, title: 'T', ...over });
+
+    it('texto só com espaços é rejeitado: título, descrição, comentário e decisão de status', async () => {
+      await create({ title: '    ' }).expect(400);
+      await create({ description: '   \n\t ' }).expect(400);
+      const id = (await create({ title: 'Para validar' }).expect(201)).body.id;
+      await http.post(`/requests/${id}/comments`).set(auth(requesterToken)).send({ content: '   ' }).expect(400);
+      await http.patch(`/requests/${id}/status`).set(auth(agentToken)).send({ status: 'approved', comment: '   ' }).expect(400);
+      await http.patch(`/requests/${id}`).set(auth(requesterToken)).send({ title: '   ' }).expect(400);
+      await http.patch(`/requests/${id}`).set(auth(requesterToken)).send({ title: null }).expect(400);
+      await http.delete(`/requests/${id}`).set(auth(supervisorToken)).expect(204);
+    });
+
+    it('entradas que antes davam 500 agora dão 400: área inexistente, caractere nulo e página gigante', async () => {
+      const ghost = '00000000-0000-4000-8000-000000000000';
+      await create({ areaId: ghost }).expect(400);
+      await create({ title: 'a\u0000b' }).expect(400);
+      const id = (await create({ title: 'Para editar' }).expect(201)).body.id;
+      await http.patch(`/requests/${id}`).set(auth(requesterToken)).send({ areaId: ghost }).expect(400);
+      await http.delete(`/requests/${id}`).set(auth(supervisorToken)).expect(204);
+      await http.get('/requests').query({ page: '99999999999999999999' }).set(auth(agentToken)).expect(400);
+      await http.get('/requests').query({ limit: '20abc' }).set(auth(agentToken)).expect(400);
+      await http.get('/requests').query({ page: '1.5' }).set(auth(agentToken)).expect(400);
+    });
+
+    it('corpo grande demais devolve 413 (e não 500) e senha gigante é recusada', async () => {
+      const big = await create({ description: 'x'.repeat(200_000) }).expect(413);
+      expect(big.body).toEqual(expect.objectContaining({ statusCode: 413, errorId: expect.any(String) }));
+      await http.post('/auth/login').send({ email: 'atendente@sicredi.test', password: 'a'.repeat(129) }).expect(400);
+    });
+
+    it('descrição e comentário têm tamanho máximo', async () => {
+      await create({ description: 'x'.repeat(10_001) }).expect(400);
+      const ok = await create({ description: 'x'.repeat(10_000) }).expect(201);
+      await http.delete(`/requests/${ok.body.id}`).set(auth(supervisorToken)).expect(204);
+    });
+
+    it('busca trata % e _ como caracteres comuns e não como curingas', async () => {
+      const all = (await http.get('/requests').query({ limit: 100 }).set(auth(agentToken)).expect(200)).body.total;
+      const pct = (await http.get('/requests').query({ search: '%' }).set(auth(agentToken)).expect(200)).body.total;
+      const und = (await http.get('/requests').query({ search: '_' }).set(auth(agentToken)).expect(200)).body.total;
+      expect(pct).toBeLessThan(all);
+      expect(und).toBeLessThan(all);
+      await http.get('/requests').query({ search: 'a'.repeat(101) }).set(auth(agentToken)).expect(400);
+    });
+  });
 });

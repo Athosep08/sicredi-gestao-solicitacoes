@@ -20,6 +20,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       status = exception.getStatus();
       const body = exception.getResponse();
       message = typeof body === 'string' ? body : ((body as any).message ?? exception.message);
+    } else {
+      // Erros do Express/body-parser (ex.: corpo grande demais) não são HttpException e viravam 500.
+      const clientStatus = (exception as any)?.status ?? (exception as any)?.statusCode;
+      if (typeof clientStatus === 'number' && clientStatus >= 400 && clientStatus < 500) {
+        status = clientStatus;
+        message = clientStatus === 413 ? 'O corpo da requisição é grande demais.' : 'Requisição inválida.';
+      }
     }
 
     if (status >= 500) {

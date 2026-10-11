@@ -1,11 +1,11 @@
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum } from 'class-validator';
 import { RequestStatus } from '../../common/enums';
+import { RequiredText } from '../../common/text.decorators';
 
 export class ChangeStatusDto {
   @IsEnum(RequestStatus, { message: 'Status inválido.' })
   status: RequestStatus;
 
-  @IsString()
-  @IsNotEmpty({ message: 'O comentário da decisão é obrigatório.' })
+  @RequiredText('O comentário da decisão', 5000)
   comment: string;
 }

@@ -1,6 +1,14 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
+import { Area } from '../areas/area.entity';
 import { AuthUser } from '../common/current-user.decorator';
 import { CommentVisibility, RequestStatus, UserRole } from '../common/enums';
 import { ChangeStatusDto } from './dto/change-status.dto';
@@ -34,8 +42,14 @@ export class RequestsService {
     }
   }
 
+  /** UUID bem formado mas inexistente violaria a FK e viraria 500; aqui vira 400 com mensagem clara. */
+  private async assertAreaExists(areaId: string, em: EntityManager = this.dataSource.manager) {
+    if (!(await em.exists(Area, { where: { id: areaId } }))) throw new BadRequestException('Área não encontrada.');
+  }
+
   async create(dto: CreateRequestDto, user: AuthUser) {
     return this.dataSource.transaction(async (em) => {
+      await this.assertAreaExists(dto.areaId, em);
       // Status inicial e solicitante nunca vêm do corpo da requisição.
       const request = await em.save(
         em.create(RequestEntity, {
@@ -80,7 +94,8 @@ export class RequestsService {
     if (query.areaId) qb.andWhere('r.areaId = :areaId', { areaId: query.areaId });
 
     if (query.search?.trim()) {
-      const term = `%${query.search.trim()}%`;
+      // %, _ e \ têm significado no LIKE; escapados, buscar "%" procura o caractere e não "tudo".
+      const term = `%${query.search.trim().replace(/[\\%_]/g, '\\$&')}%`;
       const title = 'unaccent(r.title) ILIKE unaccent(:term)';
       const description = 'unaccent(r.description) ILIKE unaccent(:term)';
       const clause =
@@ -141,6 +156,7 @@ export class RequestsService {
     if (!this.isStaff(user) && request.status !== RequestStatus.OPEN) {
       throw new UnprocessableEntityException('Só é possível editar solicitações com status "open".');
     }
+    if (dto.areaId !== undefined) await this.assertAreaExists(dto.areaId);
     Object.assign(request, {
       ...(dto.title !== undefined && { title: dto.title.trim() }),
       ...(dto.description !== undefined && { description: dto.description }),

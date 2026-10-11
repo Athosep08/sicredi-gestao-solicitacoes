@@ -1,14 +1,12 @@
-import { IsEnum, IsNotEmpty, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsEnum, IsUUID } from 'class-validator';
 import { Priority } from '../../common/enums';
+import { RequiredText } from '../../common/text.decorators';
 
 export class CreateRequestDto {
-  @IsString()
-  @IsNotEmpty({ message: 'O título é obrigatório.' })
-  @MaxLength(255, { message: 'O título deve ter no máximo 255 caracteres.' })
+  @RequiredText('O título', 255)
   title: string;
 
-  @IsString()
-  @IsNotEmpty({ message: 'A descrição é obrigatória.' })
+  @RequiredText('A descrição', 10000)
   description: string;
 
   @IsUUID('4', { message: 'Área inválida.' })
