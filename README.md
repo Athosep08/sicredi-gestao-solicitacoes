@@ -9,8 +9,8 @@ Protótipo web para registrar, consultar e decidir solicitações internas, com 
 | Parte | Situação |
 |---|---|
 | Backend (API, auth, RBAC, validação, erros, migrations, seed) | Implementado e testado |
-| Frontend Next.js (login, dashboard, listagem, nova solicitação, detalhe) | Implementado e testado |
-| Testes automatizados: 50 unitários + 19 de integração (backend), 14 (frontend) | Implementado |
+| Frontend Next.js (login, dashboard, listagem em lista ou kanban, nova solicitação, detalhe em popup ou tela cheia) | Implementado e testado |
+| Testes automatizados: 50 unitários + 19 de integração (backend), 31 (frontend) | Implementado |
 | Testes de segurança e robustez (bateria de ataque, achados corrigidos) | Executado; resultado em [Testes de segurança e robustez](#testes-de-segurança-e-robustez) |
 | Docker (Postgres + backend + frontend) | Implementado |
 | Webhook para sistema externo | Pendente (ver "Evolução da solução") |
@@ -62,7 +62,7 @@ npm test            # unitários (transição de status, guard de papéis, valid
 npm run test:e2e    # integração contra Postgres real (precisa de migration + seed aplicados e JWT_SECRET definido)
 
 cd ../frontend
-npm test            # validação (Zod), regras de status e formulário de decisão
+npm test            # validação (Zod), regras de status, formulário de decisão, kanban (arrastar) e endereços da listagem
 ```
 
 ## API
@@ -111,8 +111,12 @@ Modelo completo em `docs/modelo-dados.dbml` (cole no dbdiagram.io). Cinco tabela
 
 ## Decisões do frontend
 
-- **Server Components** para dashboard, listagem e detalhe (leitura); **Client Components** só onde há estado de formulário (nova solicitação, decisão de status, comentário).
+- **Server Components** para dashboard, listagem e detalhe (leitura); **Client Components** só onde há interação (formulários, arrastar no kanban, popup do detalhe).
 - **Filtros e paginação na URL** (`/requests?status=open&page=2`): link compartilhável e histórico do navegador funcionando. Parâmetros vazios do formulário são descartados antes de chamar a API.
+- **Lista ou kanban** na página de solicitações, escolhido na própria URL (`?view=kanban`). O kanban tem uma coluna por status, com o total e os mesmos filtros da lista; cada coluna mostra até 100 cards e leva à lista quando há mais.
+- **Arrastar para mudar status** no kanban, para atendente e supervisor. As colunas permitidas pelas transições ficam destacadas e as proibidas apagadas. Soltar o card abre uma janela pedindo o comentário obrigatório, e o status só muda ao confirmar, pela mesma action da tela de detalhe (a regra continua no backend). O solicitante vê o kanban, mas não arrasta.
+- **Detalhe em popup**: clicar numa solicitação na lista ou no kanban abre o detalhe sobre a listagem, com rotas interceptadas do Next (`@modal/(.)requests/[id]`). A URL muda para `/requests/:id`; fechar volta para onde o usuário estava, e "Abrir em tela cheia", o acesso direto ou recarregar a página mostram a página completa.
+- **Volta para a última listagem**: o endereço da listagem (visão e filtros) fica guardado na sessão do navegador, e o "voltar" do detalhe e o redirecionamento após excluir usam esse endereço. Só são aceitos endereços da própria listagem.
 - **Token em cookie httpOnly**, lido só no servidor do Next: o JavaScript do navegador nunca enxerga o JWT. As chamadas à API saem do servidor do Next (Server Actions e Server Components).
 - **Validação nas duas pontas**: Zod + React Hook Form no formulário (feedback imediato) e class-validator no backend (quem garante de verdade).
 - **Cache**: os dados são por usuário (o solicitante só vê as próprias solicitações), então não uso o cache de dados compartilhado do Next, que serviria dados de um usuário a outro. As telas são renderizadas sob demanda, e toda mutação (criar, decidir, comentar, excluir) chama `revalidatePath` nas telas afetadas. A navegação entre telas usa o prefetch do `<Link>`.
@@ -154,6 +158,7 @@ Depois das correções, repeti a mesma bateria contra o sistema rodando e os pon
 - Quem pode reabrir uma solicitação decidida não é restrito além do papel atendente/supervisor.
 - Não há teste automatizado de ponta a ponta no navegador versionado no repositório. O fluxo completo (login, criar, decidir, comentar, excluir) foi conferido manualmente em navegador real durante o desenvolvimento.
 - Interface em português, sem internacionalização, e sem tela de administração de usuários e áreas (vêm do seed).
+- O arrastar do kanban usa o recurso nativo do navegador, que não funciona por toque: no celular, a mudança de status é feita no detalhe da solicitação. Também não há como mudar status pelo teclado no kanban; o caminho acessível é o formulário do detalhe.
 - Segurança: segredo JWT e senha do banco vêm de variáveis de ambiente com valores de exemplo. Em produção precisariam ser trocados e `COOKIE_SECURE=true` ativado atrás de HTTPS.
 
 ## Evolução da solução
