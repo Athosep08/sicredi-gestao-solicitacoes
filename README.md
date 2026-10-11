@@ -10,7 +10,8 @@ Protótipo web para registrar, consultar e decidir solicitações internas, com 
 |---|---|
 | Backend (API, auth, RBAC, validação, erros, migrations, seed) | Implementado e testado |
 | Frontend Next.js (login, dashboard, listagem, nova solicitação, detalhe) | Implementado e testado |
-| Testes automatizados: 17 unitários + 12 de integração (backend), 14 (frontend) | Implementado |
+| Testes automatizados: 50 unitários + 19 de integração (backend), 14 (frontend) | Implementado |
+| Testes de segurança e robustez (bateria de ataque, achados corrigidos) | Executado; resultado em [Testes de segurança e robustez](#testes-de-segurança-e-robustez) |
 | Docker (Postgres + backend + frontend) | Implementado |
 | Webhook para sistema externo | Pendente (ver "Evolução da solução") |
 | Recuperação de senha | Pendente |
@@ -56,8 +57,8 @@ Senha de todos: `Senha@123` (apenas para avaliação).
 
 ```bash
 cd backend
-npm test            # unitários (regra de transição de status, guard de papéis)
-npm run test:e2e    # integração contra Postgres real (precisa de migration + seed aplicados)
+npm test            # unitários (transição de status, guard de papéis, validação dos DTOs, login)
+npm run test:e2e    # integração contra Postgres real (precisa de migration + seed aplicados e JWT_SECRET definido)
 
 cd frontend
 npm test            # validação (Zod), regras de status e formulário de decisão
@@ -69,7 +70,7 @@ Todas as rotas, exceto `POST /auth/login`, exigem `Authorization: Bearer <token>
 
 | Método | Rota | Quem pode | Descrição |
 |---|---|---|---|
-| POST | /auth/login | público | Retorna JWT e dados do usuário |
+| POST | /auth/login | público | Retorna JWT e dados do usuário. Limite de 10 tentativas por minuto por IP + e-mail (depois, 429) |
 | GET | /auth/me | autenticado | Usuário do token |
 | GET | /areas | autenticado | Áreas disponíveis |
 | POST | /requests | autenticado | Cria solicitação (status `open`; solicitante vem do token) |
@@ -82,6 +83,8 @@ Todas as rotas, exceto `POST /auth/login`, exigem `Authorization: Bearer <token>
 | GET | /dashboard | autenticado | Total, por status e por prioridade, agregado no banco |
 
 Listagem devolve `{ data, total, page, totalPages }`. Erros saem sempre como `{ statusCode, message, errorId, path, timestamp }`.
+
+Limites de entrada: título até 255 caracteres, descrição até 10.000, comentário (livre ou de decisão) até 5.000, busca até 100, senha até 128, corpo da requisição até 100 KB (acima disso, 413). Campos de texto com apenas espaços contam como vazios.
 
 ## Decisões de modelagem
 
@@ -103,6 +106,7 @@ Modelo completo em `docs/modelo-dados.dbml` (cole no dbdiagram.io). Cinco tabela
 - Solicitante só enxerga as próprias solicitações e só cria comentário externo.
 - Validação com class-validator (`whitelist` + `forbidNonWhitelisted`: status e solicitante nunca vêm do corpo). Filtro global de exceções com `errorId`.
 - Logs de eventos de negócio (criação, mudança de status, exclusão) em JSON.
+- Endurecimento da API: `helmet` (cabeçalhos de segurança), limite de tentativas no login (`@nestjs/throttler`) e login com tempo de resposta igual para e-mail existente e inexistente. Detalhes na seção de testes de segurança.
 
 ## Decisões do frontend
 
@@ -113,6 +117,34 @@ Modelo completo em `docs/modelo-dados.dbml` (cole no dbdiagram.io). Cinco tabela
 - **Cache**: os dados são por usuário (o solicitante só vê as próprias solicitações), então não uso o cache de dados compartilhado do Next, que serviria dados de um usuário a outro. As telas são renderizadas sob demanda, e toda mutação (criar, decidir, comentar, excluir) chama `revalidatePath` nas telas afetadas. A navegação entre telas usa o prefetch do `<Link>`.
 - Descrição em **markdown** renderizada com `react-markdown`, que não aceita HTML cru (sem XSS pelo texto digitado).
 - A lista de transições de status também existe no frontend (`src/lib/status.ts`) só para esconder opções inválidas. A regra de verdade está no backend.
+
+## Testes de segurança e robustez
+
+Com a aplicação na versão estável, fiz uma bateria de testes tentando quebrá-la, como um testador mal-intencionado: caracteres inválidos, tipos errados, textos gigantes, tokens forjados, tentativa de acessar dados de outros usuários e de burlar regras de negócio. Foram cerca de 190 verificações contra a API e o frontend rodando, mais a inspeção do navegador para XSS. A bateria foi executada com apoio de IA, por scripts descartáveis que não estão versionados; o que ficou no repositório são os testes de regressão (unitários e de integração).
+
+**O que resistiu:** token JWT forjado (algoritmo `none`, papel alterado, assinatura trocada, expirado); SQL injection e payloads de operador no login e na busca; acesso a solicitações de outros usuários (leitura, edição, comentário, listagem, busca e dashboard); mudança de status e exclusão por quem não pode; comentário interno visível ao solicitante; envio de campos proibidos no corpo (`status`, `requesterId`, `resolvedById`); XSS (script, `onerror`, `javascript:` e iframe no título, na descrição e nos comentários aparecem como texto e nada executa); solicitação excluída (404 em todas as operações); 10 decisões simultâneas na mesma solicitação (uma aceita, nove recusadas, histórico consistente); CORS com origem não autorizada.
+
+**O que encontrei e corrigi:**
+
+| # | Achado | Gravidade | Correção | Teste de regressão |
+|---|---|---|---|---|
+| 1 | O login levava ~96 ms com e-mail existente e ~15 ms com inexistente, o que permitia descobrir quais e-mails existem pelo tempo | Média | O argon2 passa a rodar sempre, com um hash descartável quando o e-mail não existe. Depois: ~94 ms contra ~110 ms | `auth.service.spec.ts` |
+| 2 | Sem limite de tentativas no login (40 senhas erradas em 3 s, todas processadas) | Média | `@nestjs/throttler`: 10 tentativas por minuto por IP + e-mail (429 depois disso) e teto geral de 600 por minuto por IP | e2e (429 sem travar outra conta) |
+| 3 | Campos obrigatórios aceitavam apenas espaços pela API: título vazio gravado, descrição e comentário em branco, e **decisão de status sem comentário**. O frontend já barrava, a API não | Média | `trim` antes da validação nos DTOs (`common/text.decorators.ts`) | unitário dos DTOs + e2e |
+| 4 | Erro 500 onde deveria ser erro do cliente: corpo acima de 100 KB, `areaId` inexistente (criação e edição), caractere nulo no texto, `title: null` na edição, `page` enorme | Baixa | 413 para corpo grande (filtro de exceções), checagem da área antes de gravar (400), validação do caractere nulo, `null` rejeitado no PATCH, `page` com máximo | unitário + e2e |
+| 5 | Texto sem tamanho máximo (descrição e comentário aceitavam 100 KB) | Baixa | Máximos de 10.000 e 5.000 caracteres, busca com 100 | unitário + e2e |
+| 6 | A busca tratava `%` e `_` como curingas do `ILIKE`: pesquisar `%` devolvia tudo | Baixa | Os caracteres são escapados na consulta | e2e |
+| 7 | Sem cabeçalhos de segurança (`X-Powered-By: Express`, sem `nosniff`, HSTS, `X-Frame-Options`) | Baixa | `helmet` na API; cabeçalhos no `next.config.mjs` (`X-Frame-Options`, `nosniff`, `Referrer-Policy` e `frame-ancestors 'none'`) | e2e (API) |
+| 8 | `limit=20abc` e `page=1.5` eram aceitos (`parseInt` lê só o prefixo) | Baixa | `Number()` com validação de inteiro | unitário + e2e |
+
+Depois das correções, repeti a mesma bateria contra o sistema rodando e os pontos acima deixaram de ocorrer.
+
+**Não corrigido ou fora do que foi testado:**
+
+- O limite de tentativas usa memória do processo: reinicia junto com a API e não é compartilhado entre instâncias. Em produção seria preciso um armazenamento compartilhado (Redis). Como o frontend chama a API de um único servidor, o limite do login conta por IP + e-mail para não bloquear todos os usuários juntos; isso não limita quem troca de e-mail a cada tentativa, e o teto geral por IP cobre só em parte.
+- O CSP do frontend cobre apenas `frame-ancestors`. Uma política completa exigiria nonces por requisição por causa dos scripts inline do Next.
+- `npm audit` no frontend aponta 2 avisos (PostCSS, dependência embutida no Next) cuja correção exige o Next 16, uma troca de versão major que não fiz neste prazo. No backend não há avisos nas dependências de produção.
+- Não foram testados: cookie com `Secure` sob HTTPS (o ambiente local é HTTP), carga e desempenho sob volume, e um teste dedicado de CSRF.
 
 ## Premissas e limitações
 
