@@ -6,6 +6,9 @@ export const IconDashboard = () => (
 export const IconList = () => (
   <svg {...base}><path d="M8 6h13M8 12h13M8 18h13" /><circle cx="3.5" cy="6" r="1" /><circle cx="3.5" cy="12" r="1" /><circle cx="3.5" cy="18" r="1" /></svg>
 );
+export const IconBoard = () => (
+  <svg {...base}><rect x="3" y="4" width="5" height="16" rx="1" /><rect x="10" y="4" width="5" height="11" rx="1" /><rect x="17" y="4" width="4" height="7" rx="1" /></svg>
+);
 export const IconPlus = () => (
   <svg {...base}><path d="M12 5v14M5 12h14" /></svg>
 );
