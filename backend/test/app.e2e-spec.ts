@@ -1,8 +1,8 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { AllExceptionsFilter } from '../src/common/all-exceptions.filter';
+import { configureApp } from '../src/app.setup';
 
 // Roda contra um Postgres real, já migrado e com seed aplicado (npm run migration:run && npm run seed).
 describe('Solicitações (e2e)', () => {
@@ -21,8 +21,7 @@ describe('Solicitações (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-    app.useGlobalFilters(new AllExceptionsFilter());
+    configureApp(app);
     await app.init();
     http = request(app.getHttpServer());
 
@@ -187,6 +186,22 @@ describe('Solicitações (e2e)', () => {
       expect(pct).toBeLessThan(all);
       expect(und).toBeLessThan(all);
       await http.get('/requests').query({ search: 'a'.repeat(101) }).set(auth(agentToken)).expect(400);
+    });
+
+    it('cabeçalhos de segurança (helmet): sem X-Powered-By e com nosniff', async () => {
+      const res = await http.get('/requests');
+      expect(res.headers['x-powered-by']).toBeUndefined();
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+    });
+
+    it('login limita tentativas por e-mail (429) sem travar outras contas', async () => {
+      const email = 'brute-force@sicredi.test'; // e-mail que não existe: não interfere nas outras contas
+      const codes: number[] = [];
+      for (let i = 0; i < 12; i++) codes.push((await http.post('/auth/login').send({ email, password: 'errada' })).status);
+      expect(codes.slice(0, 10).every((c) => c === 401)).toBe(true);
+      expect(codes.slice(10)).toEqual([429, 429]);
+      // outra conta continua podendo entrar
+      await http.post('/auth/login').send({ email: 'atendente@sicredi.test', password: 'Senha@123' }).expect(200);
     });
   });
 });
