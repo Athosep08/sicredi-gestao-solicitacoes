@@ -18,7 +18,7 @@ Protótipo web para registrar, consultar e decidir solicitações internas, com 
 
 ## Como executar
 
-Pré-requisitos: Docker e Docker Compose.
+Pré-requisitos: Docker e Docker Compose, com as portas 3000 (frontend), 3001 (API) e 5432 (Postgres) livres.
 
 ```bash
 docker compose up --build
@@ -41,6 +41,7 @@ npm run start:dev
 cd frontend
 npm install
 API_URL=http://localhost:3001 npm run dev
+# no PowerShell: $env:API_URL="http://localhost:3001"; npm run dev
 ```
 
 ### Usuários de teste (criados pelo seed)
@@ -60,7 +61,7 @@ cd backend
 npm test            # unitários (transição de status, guard de papéis, validação dos DTOs, login)
 npm run test:e2e    # integração contra Postgres real (precisa de migration + seed aplicados e JWT_SECRET definido)
 
-cd frontend
+cd ../frontend
 npm test            # validação (Zod), regras de status e formulário de decisão
 ```
 
