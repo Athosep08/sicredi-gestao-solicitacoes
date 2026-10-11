@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { api, getCurrentUser } from '@/lib/api';
 import { PRIORITY_LABEL } from '@/lib/labels';
 import type { DashboardSummary, Priority } from '@/lib/types';
@@ -6,29 +7,42 @@ export default async function DashboardPage() {
   const [user, d] = await Promise.all([getCurrentUser(), api<DashboardSummary>('/dashboard')]);
   const scoped = user.role === 'requester';
 
-  const cards = [
-    { label: 'Total', value: d.total },
-    { label: 'Abertas', value: d.open },
-    { label: 'Em análise', value: d.inAnalysis },
-    { label: 'Aprovadas', value: d.approved },
-    { label: 'Rejeitadas', value: d.rejected },
+  const statuses = [
+    { key: 'open', label: 'Abertas', value: d.open, color: 'var(--s-open)' },
+    { key: 'in_analysis', label: 'Em análise', value: d.inAnalysis, color: 'var(--s-analysis)' },
+    { key: 'approved', label: 'Aprovadas', value: d.approved, color: 'var(--s-approved)' },
+    { key: 'rejected', label: 'Rejeitadas', value: d.rejected, color: 'var(--s-rejected)' },
   ];
   const priorities: Priority[] = ['high', 'medium', 'low'];
 
   return (
     <div className="stack">
-      <h1>Dashboard</h1>
-      {scoped && <p className="hint">Mostrando apenas as suas solicitações.</p>}
-      <section className="grid-cards">
-        {cards.map((c) => (
-          <div key={c.label} className="card stat">
-            <div className="num">{c.value}</div>
-            <div className="lbl">{c.label}</div>
-          </div>
+      <div className="page-head">
+        <div>
+          <h1>Dashboard</h1>
+          <p>{scoped ? 'Resumo das suas solicitações.' : 'Resumo de todas as solicitações.'}</p>
+        </div>
+        <Link className="btn" href="/requests/new">Nova solicitação</Link>
+      </div>
+
+      <section className="stats" aria-label="Solicitações por status">
+        <div className="stat-total">
+          <span className="stat-num">{d.total}</span>
+          <span className="stat-lbl">Total</span>
+        </div>
+        {statuses.map((s) => (
+          <Link key={s.key} href={`/requests?status=${s.key}`}>
+            <span className="stat-num">{s.value}</span>
+            <span className="stat-lbl">
+              <i style={{ ['--c' as string]: s.color, ['--f' as string]: s.key === 'open' ? 'transparent' : s.color }} />
+              {s.label}
+            </span>
+          </Link>
         ))}
       </section>
-      <section className="card">
-        <h2>Distribuição por prioridade</h2>
+
+      <section className="panel">
+        <h2>Por prioridade</h2>
         {priorities.map((p) => {
           const value = d.byPriority[p];
           const pct = d.total ? Math.round((value / d.total) * 100) : 0;

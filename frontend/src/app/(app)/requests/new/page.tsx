@@ -6,7 +6,12 @@ export default async function NewRequestPage() {
   const areas = await api<Area[]>('/areas');
   return (
     <div className="stack">
-      <h1>Nova solicitação</h1>
+      <div className="page-head">
+        <div>
+          <h1>Nova solicitação</h1>
+          <p>Descreva o pedido. A equipe responsável analisa e registra a decisão.</p>
+        </div>
+      </div>
       <NewRequestForm areas={areas} />
     </div>
   );

@@ -1,30 +1,34 @@
-import Link from 'next/link';
 import { logoutAction } from '../actions';
 import { getCurrentUser } from '@/lib/api';
 import { ROLE_LABEL } from '@/lib/labels';
+import { IconLogout, IconMark } from '@/components/Icons';
+import { NavLinks } from '@/components/NavLinks';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  const initials = user.name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
   return (
-    <>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <span className="brand">Gestão de Solicitações</span>
-          <nav className="nav">
-            <Link href="/">Dashboard</Link>
-            <Link href="/requests">Solicitações</Link>
-            <Link href="/requests/new">Nova solicitação</Link>
-          </nav>
-          <div className="userbox">
-            <span>{user.name}</span>
-            <span className="role-chip">{ROLE_LABEL[user.role]}</span>
-            <form action={logoutAction}>
-              <button className="btn link" type="submit">Sair</button>
-            </form>
-          </div>
+    <div className="shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="brand-mark"><IconMark /></span>
+          <span>Solicitações<small>Gestão interna</small></span>
         </div>
-      </header>
-      <main className="container">{children}</main>
-    </>
+        <NavLinks />
+        <div className="sidebar-foot">
+          <div className="who">
+            <span className="avatar" aria-hidden>{initials}</span>
+            <div style={{ minWidth: 0 }}>
+              <div className="who-name">{user.name}</div>
+              <div className="who-role">{ROLE_LABEL[user.role]}</div>
+            </div>
+          </div>
+          <form action={logoutAction}>
+            <button className="signout" type="submit"><IconLogout /> Sair</button>
+          </form>
+        </div>
+      </aside>
+      <main className="content">{children}</main>
+    </div>
   );
 }

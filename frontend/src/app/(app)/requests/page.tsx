@@ -35,13 +35,16 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="stack">
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h1 style={{ margin: 0 }}>Solicitações</h1>
+      <div className="page-head">
+        <div>
+          <h1>Solicitações</h1>
+          <p>{list.total} {list.total === 1 ? 'resultado' : 'resultados'}</p>
+        </div>
         <Link className="btn" href="/requests/new">Nova solicitação</Link>
       </div>
 
       {/* Filtros viram parâmetros da URL (link compartilhável, histórico do navegador). */}
-      <form className="card filters" method="GET" action="/requests">
+      <form className="panel filters" method="GET" action="/requests">
         <div>
           <label htmlFor="search">Buscar</label>
           <input id="search" name="search" defaultValue={query.get('search') ?? ''} placeholder="Título ou descrição" />
@@ -86,9 +89,13 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
         </div>
       </form>
 
-      <div className="card table-wrap">
+      <div className="panel table-wrap">
         {list.data.length === 0 ? (
-          <p>Nenhuma solicitação encontrada.</p>
+          <div className="empty">
+            <strong>Nenhuma solicitação encontrada</strong>
+            <p>Ajuste os filtros ou crie uma nova solicitação.</p>
+            <Link className="btn" href="/requests/new">Nova solicitação</Link>
+          </div>
         ) : (
           <table>
             <thead>
@@ -116,7 +123,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
           </table>
         )}
         <div className="pager">
-          <span className="hint">{list.total} solicitação(ões) · página {list.page} de {list.totalPages}</span>
+          <span className="hint">Página {list.page} de {list.totalPages}</span>
           <div className="row">
             {list.page > 1 && <Link className="btn secondary" href={pageHref(list.page - 1)}>Anterior</Link>}
             {list.page < list.totalPages && <Link className="btn secondary" href={pageHref(list.page + 1)}>Próxima</Link>}

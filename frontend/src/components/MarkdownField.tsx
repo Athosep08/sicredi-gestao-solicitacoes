@@ -25,7 +25,7 @@ export function MarkdownField({ id, value, onChange, onBlur, placeholder }: Prop
         </button>
       </div>
       {preview ? (
-        <div className="card">{value.trim() ? <Markdown>{value}</Markdown> : <span className="hint">Nada para mostrar.</span>}</div>
+        <div className="panel">{value.trim() ? <Markdown>{value}</Markdown> : <span className="hint">Nada para mostrar.</span>}</div>
       ) : (
         <textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} placeholder={placeholder} />
       )}

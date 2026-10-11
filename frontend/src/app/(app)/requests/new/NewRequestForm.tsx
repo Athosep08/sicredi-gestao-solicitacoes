@@ -32,7 +32,7 @@ export function NewRequestForm({ areas }: { areas: Area[] }) {
   });
 
   return (
-    <form className="card stack" onSubmit={onSubmit} noValidate>
+    <form className="panel form-card stack" onSubmit={onSubmit} noValidate>
       <div>
         <label htmlFor="title">Título</label>
         <input id="title" maxLength={255} {...register('title')} />
