@@ -89,7 +89,9 @@ Limites de entrada: título até 255 caracteres, descrição até 10.000, coment
 
 ## Decisões de modelagem
 
-Modelo completo em `docs/modelo-dados.dbml` (cole no dbdiagram.io). Cinco tabelas: `users`, `areas`, `requests`, `request_status_history`, `request_comments`.
+![Modelo de dados](docs/modelo-dados.png)
+
+Modelo completo em `docs/modelo-dados.dbml` (cole no dbdiagram.io); a imagem acima foi exportada dele. Cinco tabelas: `users`, `areas`, `requests`, `request_status_history`, `request_comments`.
 
 - **Área em tabela** (não enum nem texto livre): texto livre quebra a agregação do dashboard e enum exigiria deploy para criar área nova.
 - **Prioridade, status, papel e visibilidade como enum nativo do Postgres**: domínios fechados.
