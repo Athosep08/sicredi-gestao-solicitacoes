@@ -9,7 +9,7 @@ export default async function RequestDetailModal({ params }: { params: Promise<{
   const [user, request] = await Promise.all([getCurrentUser(), loadRequest(id)]);
 
   return (
-    <RequestModal id={id}>
+    <RequestModal fullHref={`/requests/${id}`} label="Detalhe da solicitação">
       {request ? (
         <RequestDetailView request={request} user={user} />
       ) : (

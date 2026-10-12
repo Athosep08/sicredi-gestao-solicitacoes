@@ -53,7 +53,9 @@ function toError(e: unknown): ActionState {
   throw e; // redirect() e erros inesperados seguem seu caminho
 }
 
-export async function createRequestAction(input: CreateRequestInput): Promise<ActionState> {
+// Devolve o id em vez de redirecionar: um redirect daqui seria interceptado e abriria o detalhe
+// em popup por cima do formulário. Quem navega é o formulário (ver NewRequestForm).
+export async function createRequestAction(input: CreateRequestInput): Promise<ActionState & { id?: string }> {
   const parsed = createRequestSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -66,7 +68,7 @@ export async function createRequestAction(input: CreateRequestInput): Promise<Ac
   }
   revalidatePath('/requests');
   revalidatePath('/');
-  redirect(`/requests/${id}`);
+  return { id };
 }
 
 export async function changeStatusAction(requestId: string, input: ChangeStatusInput): Promise<ActionState> {

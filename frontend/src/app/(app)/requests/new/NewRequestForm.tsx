@@ -25,27 +25,29 @@ export function NewRequestForm({ areas }: { areas: Area[] }) {
   const onSubmit = handleSubmit((values) => {
     setServerError(undefined);
     startTransition(async () => {
-      // Em caso de sucesso a action redireciona para o detalhe; só volta aqui se houver erro.
       const result = await createRequestAction(values);
-      if (result?.error) setServerError(result.error);
+      if (result.error) return setServerError(result.error);
+      // Navegação completa, trocando /requests/new no histórico: o detalhe abre em página cheia
+      // (não em popup sobre o formulário) e "voltar" leva para onde a pessoa estava antes.
+      if (result.id) window.location.replace(`/requests/${result.id}`);
     });
   });
 
   return (
     <form className="panel form-card stack" onSubmit={onSubmit} noValidate>
       <div>
-        <label htmlFor="title">Título</label>
-        <input id="title" maxLength={255} {...register('title')} />
+        <label htmlFor="new-title">Título</label>
+        <input id="new-title" maxLength={255} {...register('title')} />
         {errors.title && <p className="field-error">{errors.title.message}</p>}
       </div>
 
       <div>
-        <label htmlFor="description">Descrição</label>
+        <label htmlFor="new-description">Descrição</label>
         <Controller
           name="description"
           control={control}
           render={({ field }) => (
-            <MarkdownField id="description" value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
+            <MarkdownField id="new-description" value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
           )}
         />
         {errors.description && <p className="field-error">{errors.description.message}</p>}
@@ -53,16 +55,16 @@ export function NewRequestForm({ areas }: { areas: Area[] }) {
 
       <div className="two-col">
         <div>
-          <label htmlFor="areaId">Área</label>
-          <select id="areaId" {...register('areaId')}>
+          <label htmlFor="new-area">Área</label>
+          <select id="new-area" {...register('areaId')}>
             <option value="">Selecione...</option>
             {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
           {errors.areaId && <p className="field-error">{errors.areaId.message}</p>}
         </div>
         <div>
-          <label htmlFor="priority">Prioridade</label>
-          <select id="priority" {...register('priority')}>
+          <label htmlFor="new-priority">Prioridade</label>
+          <select id="new-priority" {...register('priority')}>
             {Object.entries(PRIORITY_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
           {errors.priority && <p className="field-error">{errors.priority.message}</p>}

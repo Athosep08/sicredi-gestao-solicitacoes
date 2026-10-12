@@ -35,15 +35,15 @@ export function StatusForm({ requestId, current }: { requestId: string; current:
   return (
     <form className="stack" onSubmit={onSubmit} noValidate>
       <div>
-        <label htmlFor="status">Novo status</label>
-        <select id="status" {...register('status')}>
+        <label htmlFor="decision-status">Novo status</label>
+        <select id="decision-status" {...register('status')}>
           {options.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
         </select>
         {errors.status && <p className="field-error">{errors.status.message}</p>}
       </div>
       <div>
-        <label htmlFor="comment">Comentário da decisão (obrigatório)</label>
-        <textarea id="comment" {...register('comment')} />
+        <label htmlFor="decision-comment">Comentário da decisão (obrigatório)</label>
+        <textarea id="decision-comment" {...register('comment')} />
         {errors.comment && <p className="field-error">{errors.comment.message}</p>}
       </div>
       {serverError && <div className="form-error" role="alert">{serverError}</div>}
