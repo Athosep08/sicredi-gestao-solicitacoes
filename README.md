@@ -9,7 +9,7 @@ Protótipo web para registrar, consultar e decidir solicitações internas, com 
 | Parte | Situação |
 |---|---|
 | Backend (API, auth, RBAC, validação, erros, migrations, seed) | Implementado e testado |
-| Frontend Next.js (login, dashboard, listagem em lista ou kanban, nova solicitação, detalhe em popup ou tela cheia) | Implementado e testado |
+| Frontend Next.js (login, dashboard com período e gráfico, listagem em lista ou kanban, nova solicitação e detalhe em popup ou tela cheia, layout para celular) | Implementado e testado |
 | Testes automatizados: 50 unitários + 19 de integração (backend), 31 (frontend) | Implementado |
 | Testes de segurança e robustez (bateria de ataque, achados corrigidos) | Executado; resultado em [Testes de segurança e robustez](#testes-de-segurança-e-robustez) |
 | Docker (Postgres + backend + frontend) | Implementado |
@@ -74,14 +74,14 @@ Todas as rotas, exceto `POST /auth/login`, exigem `Authorization: Bearer <token>
 | POST | /auth/login | público | Retorna JWT e dados do usuário. Limite de 10 tentativas por minuto por IP + e-mail (depois, 429) |
 | GET | /auth/me | autenticado | Usuário do token |
 | GET | /areas | autenticado | Áreas disponíveis |
-| POST | /requests | autenticado | Cria solicitação (status `open`; solicitante vem do token) |
+| POST | /requests | autenticado | Cria solicitação (status `open`; solicitante vem do token). `priority` só pode ser enviada por atendente/supervisor; sem ela, nasce `medium` |
 | GET | /requests | autenticado | Lista com filtros `status`, `priority`, `areaId`, `search`, `searchIn`, `order`, paginação `page` e `limit` (20/50/100) |
 | GET | /requests/:id | autenticado | Detalhe com histórico de status e comentários |
-| PATCH | /requests/:id | dono (se `open`) ou atendente/supervisor | Edita título, descrição, área e prioridade |
+| PATCH | /requests/:id | dono (se `open`) ou atendente/supervisor | Edita título, descrição e área; prioridade só atendente/supervisor (403 para o solicitante) |
 | PATCH | /requests/:id/status | atendente, supervisor | Muda status com comentário obrigatório |
 | POST | /requests/:id/comments | autenticado | Comentário sem mudar status (interno ou externo) |
 | DELETE | /requests/:id | supervisor | Exclusão lógica (soft delete) |
-| GET | /dashboard | autenticado | Total, por status e por prioridade, agregado no banco |
+| GET | /dashboard | autenticado | Total, por status e por prioridade, agregado no banco. Período opcional `from`/`to` (AAAA-MM-DD, sobre a data de criação, dia no fuso de Brasília) |
 
 Listagem devolve `{ data, total, page, totalPages }`. Erros saem sempre como `{ statusCode, message, errorId, path, timestamp }`.
 
@@ -95,6 +95,7 @@ Modelo completo em `docs/modelo-dados.dbml` (cole no dbdiagram.io); a imagem aci
 
 - **Área em tabela** (não enum nem texto livre): texto livre quebra a agregação do dashboard e enum exigiria deploy para criar área nova.
 - **Prioridade, status, papel e visibilidade como enum nativo do Postgres**: domínios fechados.
+- **Prioridade definida pela equipe**: o solicitante descreve o pedido, mas não escolhe a prioridade (todo mundo marcaria "Alta"). A solicitação nasce como "Média" e atendente ou supervisor ajustam na triagem, no detalhe. A regra fica no backend: o solicitante que envia `priority` recebe 403.
 - **Histórico de status separado**: cada mudança guarda autor, data, status novo e comentário. Reabrir é só mais uma linha, sem status extra além dos quatro do enunciado.
 - **Comentários soltos separados do histórico**: comunicação entre solicitante e equipe sem mudar status, com flag interno/externo.
 - **Data de criação gerada pelo sistema**, imutável. `updated_at` mantido como verificação cruzada com o histórico.
@@ -118,6 +119,9 @@ Modelo completo em `docs/modelo-dados.dbml` (cole no dbdiagram.io); a imagem aci
 - **Lista ou kanban** na página de solicitações, escolhido na própria URL (`?view=kanban`). O kanban tem uma coluna por status, com o total e os mesmos filtros da lista; cada coluna mostra até 100 cards e leva à lista quando há mais.
 - **Arrastar para mudar status** no kanban, para atendente e supervisor. As colunas permitidas pelas transições ficam destacadas e as proibidas apagadas. Soltar o card abre uma janela pedindo o comentário obrigatório, e o status só muda ao confirmar, pela mesma action da tela de detalhe (a regra continua no backend). O solicitante vê o kanban, mas não arrasta.
 - **Detalhe em popup**: clicar numa solicitação na lista ou no kanban abre o detalhe sobre a listagem, com rotas interceptadas do Next (`@modal/(.)requests/[id]`). A URL muda para `/requests/:id`; fechar volta para onde o usuário estava, e "Abrir em tela cheia", o acesso direto ou recarregar a página mostram a página completa.
+- **Nova solicitação em popup**, pelo mesmo mecanismo do detalhe. A rota estática `@modal/(.)requests/new` existe para a interceptação de `[id]` não tratar "new" como um id. Depois de criar, a página do detalhe é carregada por inteiro.
+- **Dashboard**: números por status (viram link para a lista filtrada), rosca por status e barras por prioridade, em SVG e CSS, sem biblioteca de gráficos. O filtro de período vai na URL (`/?from=...&to=...`); com período ativo, os números deixam de ser link, porque a listagem não filtra por data.
+- **Celular**: os filtros ficam recolhidos atrás do botão "Filtros" (a busca continua visível), a lista vira cartões compactos e o kanban mostra uma coluna por vez, com abas por status.
 - **Volta para a última listagem**: o endereço da listagem (visão e filtros) fica guardado na sessão do navegador, e o "voltar" do detalhe e o redirecionamento após excluir usam esse endereço. Só são aceitos endereços da própria listagem.
 - **Token em cookie httpOnly**, lido só no servidor do Next: o JavaScript do navegador nunca enxerga o JWT. As chamadas à API saem do servidor do Next (Server Actions e Server Components).
 - **Validação nas duas pontas**: Zod + React Hook Form no formulário (feedback imediato) e class-validator no backend (quem garante de verdade).
@@ -158,6 +162,7 @@ Depois das correções, repeti a mesma bateria contra o sistema rodando e os pon
 - Sem recuperação de senha nem cadastro de usuários (usuários vêm do seed).
 - Busca textual usa `ILIKE` + `unaccent`; para volume grande, evoluir para índice trigram ou full-text.
 - Quem pode reabrir uma solicitação decidida não é restrito além do papel atendente/supervisor.
+- A mudança de prioridade não entra no histórico (que registra só status); fica registrada apenas a data de atualização.
 - Não há teste automatizado de ponta a ponta no navegador versionado no repositório. O fluxo completo (login, criar, decidir, comentar, excluir) foi conferido manualmente em navegador real durante o desenvolvimento.
 - Interface em português, sem internacionalização, e sem tela de administração de usuários e áreas (vêm do seed).
 - O arrastar do kanban usa o recurso nativo do navegador, que não funciona por toque: no celular, a mudança de status é feita no detalhe da solicitação. Também não há como mudar status pelo teclado no kanban; o caminho acessível é o formulário do detalhe.
