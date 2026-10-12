@@ -10,11 +10,32 @@ Protótipo web para registrar, consultar e decidir solicitações internas, com 
 |---|---|
 | Backend (API, auth, RBAC, validação, erros, migrations, seed) | Implementado e testado |
 | Frontend Next.js (login, dashboard com período e gráfico, listagem em lista ou kanban, nova solicitação e detalhe em popup ou tela cheia, layout para celular) | Implementado e testado |
-| Testes automatizados: 50 unitários + 19 de integração (backend), 31 (frontend) | Implementado |
+| Testes automatizados: 52 unitários + 21 de integração (backend), 34 (frontend) | Implementado |
 | Testes de segurança e robustez (bateria de ataque, achados corrigidos) | Executado; resultado em [Testes de segurança e robustez](#testes-de-segurança-e-robustez) |
 | Docker (Postgres + backend + frontend) | Implementado |
-| Webhook para sistema externo | Pendente (ver "Evolução da solução") |
+| Integração com sistema externo após aprovação | Não implementada (desenho no documento de considerações arquiteturais) |
 | Recuperação de senha | Pendente |
+
+## Funcionalidades
+
+| Enunciado | Como ficou |
+|---|---|
+| 4.1 Cadastro | Título, descrição (aceita markdown) e área. Solicitante e data vêm do sistema; o status inicial é sempre "Aberta". A prioridade é definida pela equipe (nasce "Média"). |
+| 4.2 Consulta | Lista paginada (20, 50 ou 100 por página) ou kanban. Busca por texto sem diferenciar acento e maiúsculas, filtros por status, prioridade e área, ordenação por data. |
+| 4.3 Análise e decisão | Atendente e supervisor mudam o status no detalhe ou arrastando o card no kanban, sempre com comentário. O histórico guarda autor, data e comentário de cada mudança; uma solicitação decidida pode ser reaberta. |
+| 4.4 Dashboard | Total, abertas, em análise, aprovadas e rejeitadas; gráfico de rosca por status; barras por prioridade; filtro por período. |
+| Além do pedido | Comentários internos e externos, triagem de prioridade, exclusão lógica pelo supervisor, detalhe e cadastro em popup, layout para celular. |
+
+Permissões por perfil (a regra vale na API, não só na tela):
+
+| | Solicitante | Atendente | Supervisor |
+|---|---|---|---|
+| Vê solicitações | só as próprias | todas | todas |
+| Cria solicitação | sim | sim | sim |
+| Define prioridade | não | sim | sim |
+| Muda status | não | sim | sim |
+| Comentário interno | não (nem vê) | sim | sim |
+| Exclui | não | não | sim |
 
 ## Como executar
 
@@ -62,7 +83,7 @@ npm test            # unitários (transição de status, guard de papéis, valid
 npm run test:e2e    # integração contra Postgres real (precisa de migration + seed aplicados e JWT_SECRET definido)
 
 cd ../frontend
-npm test            # validação (Zod), regras de status, formulário de decisão, kanban (arrastar) e endereços da listagem
+npm test            # validação (Zod), regras de status, formulário de decisão, kanban (arrastar), período do dashboard e endereços da listagem
 ```
 
 ## API
@@ -169,6 +190,8 @@ Depois das correções, repeti a mesma bateria contra o sistema rodando e os pon
 - Segurança: segredo JWT e senha do banco vêm de variáveis de ambiente com valores de exemplo. Em produção precisariam ser trocados e `COOKIE_SECURE=true` ativado atrás de HTTPS.
 
 ## Evolução da solução
+
+As perguntas do item 8.2 (evolução da solução e integração com sistemas externos) estão respondidas em detalhe no documento de considerações arquiteturais enviado junto com a entrega. Em resumo, os próximos passos seriam:
 
 - **Atribuição explícita de responsável** antes da decisão (hoje `resolved_by` só registra quem decidiu).
 - **Integração com sistema corporativo após aprovação**: padrão outbox (tabela de eventos gravada na mesma transação da mudança de status, despachada por job com retry e backoff e chave de idempotência), para que falha do sistema externo não afete a experiência do usuário e haja rastreabilidade.
