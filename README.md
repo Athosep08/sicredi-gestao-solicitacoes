@@ -10,10 +10,10 @@ Protótipo web para registrar, consultar e decidir solicitações internas, com 
 |---|---|
 | Backend (API, auth, RBAC, validação, erros, migrations, seed) | Implementado e testado |
 | Frontend Next.js (login, dashboard com período e gráfico, listagem em lista ou kanban, nova solicitação e detalhe em popup ou tela cheia, layout para celular) | Implementado e testado |
-| Testes automatizados: 52 unitários + 21 de integração (backend), 34 (frontend) | Implementado |
+| Testes automatizados: 52 unitários + 21 de integração (backend), 36 (frontend) | Implementado |
 | Testes de segurança e robustez (bateria de ataque, achados corrigidos) | Executado; resultado em [Testes de segurança e robustez](#testes-de-segurança-e-robustez) |
 | Docker (Postgres + backend + frontend) | Implementado |
-| Integração com sistema externo após aprovação | Não implementada (desenho no documento de considerações arquiteturais) |
+| Integração com sistema externo após aprovação | Não implementada (desenho em [docs/consideracoes-arquiteturais.md](docs/consideracoes-arquiteturais.md)) |
 | Recuperação de senha | Pendente |
 
 ## Funcionalidades
@@ -24,7 +24,7 @@ Protótipo web para registrar, consultar e decidir solicitações internas, com 
 | 4.2 Consulta | Lista paginada (20, 50 ou 100 por página) ou kanban. Busca por texto sem diferenciar acento e maiúsculas, filtros por status, prioridade e área, ordenação por data. |
 | 4.3 Análise e decisão | Atendente e supervisor mudam o status no detalhe ou arrastando o card no kanban, sempre com comentário. O histórico guarda autor, data e comentário de cada mudança; uma solicitação decidida pode ser reaberta. |
 | 4.4 Dashboard | Total, abertas, em análise, aprovadas e rejeitadas; gráfico de rosca por status; barras por prioridade; filtro por período. |
-| Além do pedido | Comentários internos e externos, triagem de prioridade, exclusão lógica pelo supervisor, detalhe e cadastro em popup, layout para celular. |
+| Além do pedido | Edição de título, descrição e área no detalhe (equipe sempre; solicitante enquanto aberta), comentários internos e externos, triagem de prioridade, exclusão lógica pelo supervisor, detalhe e cadastro em popup, layout para celular. |
 
 Permissões por perfil (a regra vale na API, não só na tela):
 
@@ -32,6 +32,7 @@ Permissões por perfil (a regra vale na API, não só na tela):
 |---|---|---|---|
 | Vê solicitações | só as próprias | todas | todas |
 | Cria solicitação | sim | sim | sim |
+| Edita título, descrição e área | a própria, enquanto aberta | sim | sim |
 | Define prioridade | não | sim | sim |
 | Muda status | não | sim | sim |
 | Comentário interno | não (nem vê) | sim | sim |
@@ -65,6 +66,20 @@ API_URL=http://localhost:3001 npm run dev
 # no PowerShell: $env:API_URL="http://localhost:3001"; npm run dev
 ```
 
+### Configuração
+
+Com Docker, nada precisa ser configurado: o `docker-compose.yml` já define as variáveis com valores de exemplo. Sem Docker, o backend lê `backend/.env` (copiado de `.env.example`) e o frontend lê as variáveis do ambiente.
+
+| Variável | Onde | Padrão de exemplo | Para que serve |
+|---|---|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | backend | `localhost`, `5432`, `requests` | Conexão com o Postgres |
+| `JWT_SECRET` | backend | `troque-este-segredo-em-producao` | Assinatura do token (obrigatória; trocar fora da avaliação) |
+| `JWT_EXPIRES_IN` | backend | `8h` | Validade do token |
+| `PORT` | backend | `3001` | Porta da API |
+| `CORS_ORIGIN` | backend | `http://localhost:3000` | Origem autorizada a chamar a API |
+| `API_URL` | frontend | `http://localhost:3001` | Endereço da API, usado pelo servidor do Next |
+| `COOKIE_SECURE` | frontend | `false` | `true` atrás de HTTPS, para o cookie de sessão só trafegar cifrado |
+
 ### Usuários de teste (criados pelo seed)
 
 Senha de todos: `Senha@123` (apenas para avaliação).
@@ -83,7 +98,7 @@ npm test            # unitários (transição de status, guard de papéis, valid
 npm run test:e2e    # integração contra Postgres real (precisa de migration + seed aplicados e JWT_SECRET definido)
 
 cd ../frontend
-npm test            # validação (Zod), regras de status, formulário de decisão, kanban (arrastar), período do dashboard e endereços da listagem
+npm test            # validação (Zod), regras de status, formulários de decisão e de edição, kanban (arrastar), período do dashboard e endereços da listagem
 ```
 
 ## API
@@ -191,7 +206,7 @@ Depois das correções, repeti a mesma bateria contra o sistema rodando e os pon
 
 ## Evolução da solução
 
-As perguntas do item 8.2 (evolução da solução e integração com sistemas externos) estão respondidas em detalhe no documento de considerações arquiteturais enviado junto com a entrega. Em resumo, os próximos passos seriam:
+As perguntas do item 8.2 (evolução da solução e integração com sistemas externos) e o item 11 (o que foi entregue, o que ficou pendente, critérios de priorização e próximos passos) estão respondidos em [docs/consideracoes-arquiteturais.md](docs/consideracoes-arquiteturais.md). Em resumo, os próximos passos seriam:
 
 - **Atribuição explícita de responsável** antes da decisão (hoje `resolved_by` só registra quem decidiu).
 - **Integração com sistema corporativo após aprovação**: padrão outbox (tabela de eventos gravada na mesma transação da mudança de status, despachada por job com retry e backoff e chave de idempotência), para que falha do sistema externo não afete a experiência do usuário e haja rastreabilidade.
