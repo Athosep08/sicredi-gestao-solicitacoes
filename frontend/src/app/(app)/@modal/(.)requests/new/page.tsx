@@ -1,4 +1,5 @@
-import { api } from '@/lib/api';
+import { api, getCurrentUser } from '@/lib/api';
+import { isStaff } from '@/lib/status';
 import type { Area } from '@/lib/types';
 import { RequestModal } from '@/components/RequestModal';
 import { NewRequestForm } from '../../../requests/new/NewRequestForm';
@@ -7,7 +8,7 @@ import { NewRequestForm } from '../../../requests/new/NewRequestForm';
 // "new" fosse um id. Navegando de dentro do sistema, o formulário abre em popup; acesso direto
 // ou recarregar mostram a página cheia (requests/new/page.tsx).
 export default async function NewRequestModal() {
-  const areas = await api<Area[]>('/areas');
+  const [user, areas] = await Promise.all([getCurrentUser(), api<Area[]>('/areas')]);
   return (
     <RequestModal fullHref="/requests/new" label="Nova solicitação">
       <div className="stack">
@@ -17,7 +18,7 @@ export default async function NewRequestModal() {
             <p>Descreva o pedido. A equipe responsável analisa e registra a decisão.</p>
           </div>
         </div>
-        <NewRequestForm areas={areas} />
+        <NewRequestForm areas={areas} canSetPriority={isStaff(user.role)} />
       </div>
     </RequestModal>
   );

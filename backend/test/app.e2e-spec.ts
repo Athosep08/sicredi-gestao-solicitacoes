@@ -56,18 +56,26 @@ describe('Solicitações (e2e)', () => {
       .expect(400);
   });
 
-  it('solicitante cria solicitação: nasce aberta e com primeira linha no histórico', async () => {
+  it('solicitante cria solicitação: nasce aberta, prioridade média e com primeira linha no histórico', async () => {
     const res = await http
       .post('/requests')
       .set(auth(requesterToken))
-      .send({ title: 'Notebook novo', description: 'Preciso de **um notebook** para o time.', areaId, priority: 'high' })
+      .send({ title: 'Notebook novo', description: 'Preciso de **um notebook** para o time.', areaId })
       .expect(201);
     requestId = res.body.id;
     expect(res.body.status).toBe('open');
+    expect(res.body.priority).toBe('medium');
 
     const detail = (await http.get(`/requests/${requestId}`).set(auth(requesterToken)).expect(200)).body;
     expect(detail.history).toHaveLength(1);
     expect(detail.history[0].status).toBe('open');
+  });
+
+  it('prioridade é da equipe: solicitante não define nem altera; atendente altera', async () => {
+    await http.post('/requests').set(auth(requesterToken)).send({ title: 't', description: 'x', areaId, priority: 'high' }).expect(403);
+    await http.patch(`/requests/${requestId}`).set(auth(requesterToken)).send({ priority: 'high' }).expect(403);
+    const res = await http.patch(`/requests/${requestId}`).set(auth(agentToken)).send({ priority: 'high' }).expect(200);
+    expect(res.body.priority).toBe('high');
   });
 
   it('solicitante NÃO pode mudar status; atendente pode, com comentário obrigatório', async () => {
@@ -106,7 +114,7 @@ describe('Solicitações (e2e)', () => {
   });
 
   it('listagem: busca sem acento/caixa, filtros combinados e paginação com metadados', async () => {
-    await http.post('/requests').set(auth(requesterToken)).send({ title: 'Solicitação de crédito', description: 'Análise', areaId, priority: 'low' }).expect(201);
+    await http.post('/requests').set(auth(requesterToken)).send({ title: 'Solicitação de crédito', description: 'Análise', areaId }).expect(201);
     const accent = await http.get('/requests').query({ search: 'SOLICITACAO DE CREDITO', searchIn: 'title' }).set(auth(agentToken)).expect(200);
     expect(accent.body.total).toBeGreaterThanOrEqual(1);
 
@@ -141,7 +149,7 @@ describe('Solicitações (e2e)', () => {
 
   // ---- Regressões dos pontos encontrados na bateria de testes de ataque ----
   describe('endurecimento (achados dos testes de ataque)', () => {
-    const body = { description: 'D', areaId: '', priority: 'low' };
+    const body = { description: 'D', areaId: '' };
     const create = (over: object) => http.post('/requests').set(auth(requesterToken)).send({ ...body, areaId, title: 'T', ...over });
 
     it('texto só com espaços é rejeitado: título, descrição, comentário e decisão de status', async () => {

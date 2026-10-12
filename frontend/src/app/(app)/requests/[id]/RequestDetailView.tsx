@@ -6,6 +6,7 @@ import { PriorityBadge, StatusBadge } from '@/components/Badges';
 import { Markdown } from '@/components/Markdown';
 import { CommentForm } from './CommentForm';
 import { DeleteButton } from './DeleteButton';
+import { PriorityForm } from './PriorityForm';
 import { StatusForm } from './StatusForm';
 
 /** Busca o detalhe. 400 (id inválido), 403 e 404 viram null: a tela não revela se a solicitação existe. */
@@ -92,6 +93,13 @@ export function RequestDetailView({ request, user }: { request: RequestDetail; u
             <section className="panel">
               <h2>Alterar status</h2>
               <StatusForm requestId={request.id} current={request.status} />
+            </section>
+          )}
+
+          {staff && (
+            <section className="panel">
+              <h2>Triagem</h2>
+              <PriorityForm key={request.priority} requestId={request.id} current={request.priority} />
             </section>
           )}
 

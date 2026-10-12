@@ -1,4 +1,4 @@
-import { IsEnum, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { Priority } from '../../common/enums';
 import { RequiredText } from '../../common/text.decorators';
 
@@ -12,6 +12,8 @@ export class CreateRequestDto {
   @IsUUID('4', { message: 'Área inválida.' })
   areaId: string;
 
+  // Só a equipe informa (o serviço barra o solicitante); sem valor, nasce "medium".
+  @IsOptional()
   @IsEnum(Priority, { message: 'Prioridade deve ser low, medium ou high.' })
-  priority: Priority;
+  priority?: Priority;
 }

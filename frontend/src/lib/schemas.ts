@@ -8,10 +8,13 @@ export const createRequestSchema = z.object({
     .max(255, 'O título deve ter no máximo 255 caracteres.'),
   description: z.string().trim().min(1, 'Informe a descrição.'),
   areaId: z.string().min(1, 'Selecione a área.'),
-  priority: z.enum(['low', 'medium', 'high'], { message: 'Selecione a prioridade.' }),
+  // Só a equipe informa; para o solicitante o campo nem aparece (a API também barra).
+  priority: z.enum(['low', 'medium', 'high'], { message: 'Selecione a prioridade.' }).optional(),
 });
 
 export type CreateRequestInput = z.infer<typeof createRequestSchema>;
+
+export const prioritySchema = z.enum(['low', 'medium', 'high'], { message: 'Selecione a prioridade.' });
 
 export const changeStatusSchema = z.object({
   status: z.enum(['open', 'in_analysis', 'approved', 'rejected'], { message: 'Selecione o novo status.' }),

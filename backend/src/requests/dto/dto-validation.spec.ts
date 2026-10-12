@@ -30,9 +30,15 @@ describe('CreateRequestDto', () => {
     ['título numérico', { title: 123 }],
     ['título null', { title: null }],
     ['título objeto', { title: { a: 1 } }],
+    ['prioridade fora da lista', { priority: 'urgente' }],
   ])('rejeita %s', async (_nome, over) => {
     const { errors } = await check(CreateRequestDto, { ...valid, ...over });
     expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('prioridade é opcional (a equipe define depois)', async () => {
+    const { priority: _omitida, ...semPrioridade } = valid;
+    expect((await check(CreateRequestDto, semPrioridade)).errors).toHaveLength(0);
   });
 
   it('aceita título com exatamente 255 caracteres e texto com emoji e acentos', async () => {

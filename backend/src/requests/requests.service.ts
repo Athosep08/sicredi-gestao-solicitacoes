@@ -10,7 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Area } from '../areas/area.entity';
 import { AuthUser } from '../common/current-user.decorator';
-import { CommentVisibility, RequestStatus, UserRole } from '../common/enums';
+import { CommentVisibility, Priority, RequestStatus, UserRole } from '../common/enums';
 import { ChangeStatusDto } from './dto/change-status.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
@@ -47,7 +47,15 @@ export class RequestsService {
     if (!(await em.exists(Area, { where: { id: areaId } }))) throw new BadRequestException('Área não encontrada.');
   }
 
+  /** Prioridade é decisão da equipe: o solicitante não informa nem altera. */
+  private assertCanSetPriority(priority: Priority | undefined, user: AuthUser) {
+    if (priority !== undefined && !this.isStaff(user)) {
+      throw new ForbiddenException('A prioridade é definida pela equipe de atendimento.');
+    }
+  }
+
   async create(dto: CreateRequestDto, user: AuthUser) {
+    this.assertCanSetPriority(dto.priority, user);
     return this.dataSource.transaction(async (em) => {
       await this.assertAreaExists(dto.areaId, em);
       // Status inicial e solicitante nunca vêm do corpo da requisição.
@@ -56,7 +64,7 @@ export class RequestsService {
           title: dto.title.trim(),
           description: dto.description,
           areaId: dto.areaId,
-          priority: dto.priority,
+          priority: dto.priority ?? Priority.MEDIUM,
           status: RequestStatus.OPEN,
           requesterId: user.id,
         }),
@@ -151,6 +159,7 @@ export class RequestsService {
     const request = await this.requests.findOne({ where: { id } });
     if (!request) throw new NotFoundException('Solicitação não encontrada.');
     this.assertCanAccess(request, user);
+    this.assertCanSetPriority(dto.priority, user);
 
     // Solicitante só edita enquanto a solicitação ainda está aberta.
     if (!this.isStaff(user) && request.status !== RequestStatus.OPEN) {

@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { API_URL, ApiError, TOKEN_COOKIE, api, formatMessage } from '@/lib/api';
-import { changeStatusSchema, commentSchema, createRequestSchema } from '@/lib/schemas';
+import { changeStatusSchema, commentSchema, createRequestSchema, prioritySchema } from '@/lib/schemas';
 import type { ChangeStatusInput, CommentInput, CreateRequestInput } from '@/lib/schemas';
 
 export interface ActionState {
@@ -80,6 +80,20 @@ export async function changeStatusAction(requestId: string, input: ChangeStatusI
     return toError(e);
   }
   // Mudou status: a listagem, o dashboard e o detalhe precisam ser refeitos.
+  revalidatePath('/requests');
+  revalidatePath('/');
+  revalidatePath(`/requests/${requestId}`);
+  return {};
+}
+
+export async function changePriorityAction(requestId: string, priority: unknown): Promise<ActionState> {
+  const parsed = prioritySchema.safeParse(priority);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  try {
+    await api(`/requests/${requestId}`, { method: 'PATCH', body: JSON.stringify({ priority: parsed.data }) });
+  } catch (e) {
+    return toError(e);
+  }
   revalidatePath('/requests');
   revalidatePath('/');
   revalidatePath(`/requests/${requestId}`);

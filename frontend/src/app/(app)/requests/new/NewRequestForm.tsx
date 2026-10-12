@@ -9,7 +9,7 @@ import { PRIORITY_LABEL } from '@/lib/labels';
 import { createRequestSchema, type CreateRequestInput } from '@/lib/schemas';
 import type { Area } from '@/lib/types';
 
-export function NewRequestForm({ areas }: { areas: Area[] }) {
+export function NewRequestForm({ areas, canSetPriority }: { areas: Area[]; canSetPriority: boolean }) {
   const [serverError, setServerError] = useState<string>();
   const [pending, startTransition] = useTransition();
   const {
@@ -19,7 +19,7 @@ export function NewRequestForm({ areas }: { areas: Area[] }) {
     formState: { errors },
   } = useForm<CreateRequestInput>({
     resolver: zodResolver(createRequestSchema),
-    defaultValues: { title: '', description: '', areaId: '', priority: 'medium' },
+    defaultValues: { title: '', description: '', areaId: '', priority: canSetPriority ? 'medium' : undefined },
   });
 
   const onSubmit = handleSubmit((values) => {
@@ -62,16 +62,21 @@ export function NewRequestForm({ areas }: { areas: Area[] }) {
           </select>
           {errors.areaId && <p className="field-error">{errors.areaId.message}</p>}
         </div>
-        <div>
-          <label htmlFor="new-priority">Prioridade</label>
-          <select id="new-priority" {...register('priority')}>
-            {Object.entries(PRIORITY_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-          {errors.priority && <p className="field-error">{errors.priority.message}</p>}
-        </div>
+        {canSetPriority && (
+          <div>
+            <label htmlFor="new-priority">Prioridade</label>
+            <select id="new-priority" {...register('priority')}>
+              {Object.entries(PRIORITY_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            {errors.priority && <p className="field-error">{errors.priority.message}</p>}
+          </div>
+        )}
       </div>
 
-      <p className="hint">O status inicial é sempre &quot;Aberta&quot; e a data de criação é registrada automaticamente.</p>
+      <p className="hint">
+        O status inicial é sempre &quot;Aberta&quot; e a data de criação é registrada automaticamente.
+        {!canSetPriority && ' A prioridade é definida pela equipe de atendimento ao analisar o pedido.'}
+      </p>
       {serverError && <div className="form-error" role="alert">{serverError}</div>}
       <div>
         <button className="btn" type="submit" disabled={pending}>{pending ? 'Enviando...' : 'Criar solicitação'}</button>

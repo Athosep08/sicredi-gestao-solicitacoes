@@ -24,6 +24,11 @@ describe('createRequestSchema', () => {
     expect(createRequestSchema.safeParse({ ...valid, areaId: '' }).success).toBe(false);
     expect(createRequestSchema.safeParse({ ...valid, priority: 'urgente' }).success).toBe(false);
   });
+
+  it('prioridade é opcional (o solicitante não informa; a equipe define)', () => {
+    const { priority: _omitida, ...semPrioridade } = valid;
+    expect(createRequestSchema.safeParse(semPrioridade).success).toBe(true);
+  });
 });
 
 describe('changeStatusSchema', () => {
