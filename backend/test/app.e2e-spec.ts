@@ -133,6 +133,17 @@ describe('Solicitações (e2e)', () => {
     expect(d.byPriority.low + d.byPriority.medium + d.byPriority.high).toBe(d.total);
   });
 
+  it('dashboard filtra por período de criação e valida as datas', async () => {
+    const all = (await http.get('/dashboard').set(auth(supervisorToken)).expect(200)).body.total;
+    const wide = (await http.get('/dashboard').query({ from: '2000-01-01', to: '2999-12-31' }).set(auth(supervisorToken)).expect(200)).body;
+    expect(wide.total).toBe(all);
+    const future = (await http.get('/dashboard').query({ from: '2999-01-01' }).set(auth(supervisorToken)).expect(200)).body;
+    expect(future.total).toBe(0);
+    await http.get('/dashboard').query({ from: '2026-02-31' }).set(auth(supervisorToken)).expect(400);
+    await http.get('/dashboard').query({ from: '12/10/2026' }).set(auth(supervisorToken)).expect(400);
+    await http.get('/dashboard').query({ from: '2026-10-12', to: '2026-10-01' }).set(auth(supervisorToken)).expect(400);
+  });
+
   it('só supervisor exclui (soft delete) e some da listagem e do dashboard', async () => {
     const before = (await http.get('/dashboard').set(auth(supervisorToken)).expect(200)).body.total;
     await http.delete(`/requests/${requestId}`).set(auth(agentToken)).expect(403);
