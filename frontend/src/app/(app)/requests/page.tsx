@@ -12,6 +12,7 @@ import {
 } from '@/lib/requests-query';
 import type { Area, Paginated, RequestSummary } from '@/lib/types';
 import { IconBoard, IconList } from '@/components/Icons';
+import { FiltersForm } from '@/components/FiltersForm';
 import { RememberListUrl } from '@/components/ListUrl';
 import { PriorityBadge, StatusBadge } from '@/components/Badges';
 import { KanbanBoard, type KanbanColumn } from './KanbanBoard';
@@ -49,6 +50,8 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
     return `/requests?${q.toString()}`;
   };
 
+  const activeFilters = ['search', 'status', 'priority', 'areaId'].filter((k) => query.get(k)).length;
+
   const currentUrl = kanban ? viewHref(query, 'kanban') : `/requests${query.size ? `?${query.toString()}` : ''}`;
 
   return (
@@ -73,9 +76,9 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
       </div>
 
       {/* Filtros viram parâmetros da URL (link compartilhável, histórico do navegador). */}
-      <form className={`panel filters${kanban ? ' no-limit' : ''}`} method="GET" action="/requests">
+      <FiltersForm className={`panel filters${kanban ? ' no-limit' : ''}`} active={activeFilters}>
         {kanban && <input type="hidden" name="view" value="kanban" />}
-        <div>
+        <div className="f-search">
           <label htmlFor="search">Buscar</label>
           <input id="search" name="search" defaultValue={query.get('search') ?? ''} placeholder="Título ou descrição" />
         </div>
@@ -119,7 +122,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
           <button className="btn" type="submit">Filtrar</button>
           <Link className="btn secondary" href={kanban ? '/requests?view=kanban' : '/requests'}>Limpar</Link>
         </div>
-      </form>
+      </FiltersForm>
 
       {columns && <KanbanBoard columns={columns} canMove={isStaff(user.role)} />}
 
@@ -147,11 +150,11 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
                 {list.data.map((r) => (
                   <tr key={r.id}>
                     <td className="title"><Link href={`/requests/${r.id}`}>{r.title}</Link></td>
-                    <td>{r.area.name}</td>
-                    <td><PriorityBadge priority={r.priority} /></td>
-                    <td><StatusBadge status={r.status} /></td>
-                    <td>{r.requester.name}</td>
-                    <td>{formatDate(r.createdAt)}</td>
+                    <td className="c-area">{r.area.name}</td>
+                    <td className="c-priority"><PriorityBadge priority={r.priority} /></td>
+                    <td className="c-status"><StatusBadge status={r.status} /></td>
+                    <td className="c-requester">{r.requester.name}</td>
+                    <td className="c-date">{formatDate(r.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>

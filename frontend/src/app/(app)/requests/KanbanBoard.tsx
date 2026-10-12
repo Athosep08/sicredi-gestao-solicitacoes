@@ -33,18 +33,35 @@ interface Move {
 export function KanbanBoard({ columns, canMove }: { columns: KanbanColumn[]; canMove: boolean }) {
   const [dragging, setDragging] = useState<{ id: string; title: string; from: RequestStatus } | null>(null);
   const [move, setMove] = useState<Move | null>(null);
+  // No celular cabe uma coluna por vez: as abas escolhem qual (no desktop ficam escondidas por CSS).
+  const [mobileStatus, setMobileStatus] = useState<RequestStatus>(columns[0]?.status ?? 'open');
 
   const canDrop = (to: RequestStatus) => !!dragging && allowedNextStatuses(dragging.from).includes(to);
 
   return (
     <>
+      {columns.length > 1 && (
+        <div className="kanban-tabs" role="tablist" aria-label="Coluna exibida">
+          {columns.map((c) => (
+            <button
+              key={c.status}
+              type="button"
+              role="tab"
+              aria-selected={mobileStatus === c.status}
+              onClick={() => setMobileStatus(c.status)}
+            >
+              {STATUS_LABEL[c.status]} <span className="kanban-count">{c.total}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <div className={`kanban${columns.length === 1 ? ' single' : ''}${dragging ? ' is-dragging' : ''}`}>
         {columns.map((c) => {
           const state = !dragging ? '' : canDrop(c.status) ? ' drop-ok' : c.status === dragging.from ? '' : ' drop-no';
           return (
             <section
               key={c.status}
-              className={`kanban-col${state}`}
+              className={`kanban-col${state}${c.status === mobileStatus ? ' mobile-current' : ''}`}
               aria-label={`Coluna ${STATUS_LABEL[c.status]}`}
               onDragOver={(e) => {
                 if (!canDrop(c.status)) return;

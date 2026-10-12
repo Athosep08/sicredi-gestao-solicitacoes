@@ -17,14 +17,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </div>
           {expired && <div className="form-error">Sua sessão expirou. Entre novamente.</div>}
           <LoginForm />
-          <div className="demo">
-            Contas de teste (senha <strong>Senha@123</strong>):
-            <ul>
-              <li>solicitante@sicredi.test</li>
-              <li>atendente@sicredi.test</li>
-              <li>supervisor@sicredi.test</li>
-            </ul>
-          </div>
         </div>
       </main>
     </div>
