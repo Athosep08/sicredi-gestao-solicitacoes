@@ -1,11 +1,12 @@
 import { ApiError, api } from '@/lib/api';
 import { ROLE_LABEL, formatDate } from '@/lib/labels';
 import { isStaff } from '@/lib/status';
-import type { RequestDetail, SessionUser } from '@/lib/types';
+import type { Area, RequestDetail, SessionUser } from '@/lib/types';
 import { PriorityBadge, StatusBadge } from '@/components/Badges';
 import { Markdown } from '@/components/Markdown';
 import { CommentForm } from './CommentForm';
 import { DeleteButton } from './DeleteButton';
+import { EditForm } from './EditForm';
 import { PriorityForm } from './PriorityForm';
 import { StatusForm } from './StatusForm';
 
@@ -20,8 +21,11 @@ export async function loadRequest(id: string): Promise<RequestDetail | null> {
 }
 
 /** Conteúdo do detalhe, usado na página cheia e no popup aberto a partir da listagem. */
-export function RequestDetailView({ request, user }: { request: RequestDetail; user: SessionUser }) {
+export async function RequestDetailView({ request, user }: { request: RequestDetail; user: SessionUser }) {
   const staff = isStaff(user.role);
+  // Mesma regra da API: a equipe edita sempre; o solicitante, só a própria e enquanto estiver aberta.
+  const canEdit = staff || (request.requester.id === user.id && request.status === 'open');
+  const areas = canEdit ? await api<Area[]>('/areas') : [];
 
   return (
     <div className="stack">
@@ -38,6 +42,14 @@ export function RequestDetailView({ request, user }: { request: RequestDetail; u
           <section className="panel">
             <h2>Descrição</h2>
             <Markdown>{request.description}</Markdown>
+            {canEdit && (
+              <EditForm
+                key={request.updatedAt}
+                requestId={request.id}
+                initial={{ title: request.title, description: request.description, areaId: request.area.id }}
+                areas={areas}
+              />
+            )}
           </section>
 
           <section className="panel">

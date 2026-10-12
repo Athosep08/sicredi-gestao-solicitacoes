@@ -14,6 +14,11 @@ export const createRequestSchema = z.object({
 
 export type CreateRequestInput = z.infer<typeof createRequestSchema>;
 
+// Edição: os mesmos campos do cadastro, menos a prioridade (que tem fluxo próprio, a triagem).
+export const editRequestSchema = createRequestSchema.omit({ priority: true });
+
+export type EditRequestInput = z.infer<typeof editRequestSchema>;
+
 export const prioritySchema = z.enum(['low', 'medium', 'high'], { message: 'Selecione a prioridade.' });
 
 export const changeStatusSchema = z.object({

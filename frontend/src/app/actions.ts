@@ -4,8 +4,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { API_URL, ApiError, TOKEN_COOKIE, api, formatMessage } from '@/lib/api';
-import { changeStatusSchema, commentSchema, createRequestSchema, prioritySchema } from '@/lib/schemas';
-import type { ChangeStatusInput, CommentInput, CreateRequestInput } from '@/lib/schemas';
+import { changeStatusSchema, commentSchema, createRequestSchema, editRequestSchema, prioritySchema } from '@/lib/schemas';
+import type { ChangeStatusInput, CommentInput, CreateRequestInput, EditRequestInput } from '@/lib/schemas';
 
 export interface ActionState {
   error?: string;
@@ -82,6 +82,19 @@ export async function changeStatusAction(requestId: string, input: ChangeStatusI
   // Mudou status: a listagem, o dashboard e o detalhe precisam ser refeitos.
   revalidatePath('/requests');
   revalidatePath('/');
+  revalidatePath(`/requests/${requestId}`);
+  return {};
+}
+
+export async function updateRequestAction(requestId: string, input: EditRequestInput): Promise<ActionState> {
+  const parsed = editRequestSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  try {
+    await api(`/requests/${requestId}`, { method: 'PATCH', body: JSON.stringify(parsed.data) });
+  } catch (e) {
+    return toError(e);
+  }
+  revalidatePath('/requests');
   revalidatePath(`/requests/${requestId}`);
   return {};
 }
